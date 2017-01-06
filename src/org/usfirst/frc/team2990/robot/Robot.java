@@ -20,8 +20,8 @@ public class Robot extends IterativeRobot {
 	public Joystick driveControllerL;
 	public Joystick driveControllerR;	
 	
-	public Joystick XboxController;
-	public boolean UsingXbox = false;
+	public Joystick xboxController;
+	public boolean usingXbox = false;
 	
 	public DoubleSolenoid leftShifter;
 	public DoubleSolenoid rightShifter;
@@ -38,15 +38,16 @@ public class Robot extends IterativeRobot {
 		driveControllerR = new Joystick(1);
 		leftShifter = new DoubleSolenoid(0, 1);
 		rightShifter = new DoubleSolenoid(2, 3);
+		xboxController = new Joystick(0);
 		
 		float lerpSpeed = 0.2f;
-		leftMotorOne = new JoshMotorControllor(0, lerpSpeed);
-		leftMotorTwo = new JoshMotorControllor(1, lerpSpeed);
+		leftMotorOne = new JoshMotorControllor(1, lerpSpeed);
+		leftMotorTwo = new JoshMotorControllor(3, lerpSpeed);
 		leftMotorThree = new JoshMotorControllor(2, lerpSpeed);
 		
-		rightMotorOne = new JoshMotorControllor(7, lerpSpeed);
-		rightMotorTwo = new JoshMotorControllor(8, lerpSpeed);
-		rightMotorThree = new JoshMotorControllor(9, lerpSpeed);
+		rightMotorOne = new JoshMotorControllor(8, lerpSpeed);
+		rightMotorTwo = new JoshMotorControllor(7, lerpSpeed);
+		rightMotorThree = new JoshMotorControllor(6, lerpSpeed);
 	}
 
 	/**
@@ -69,7 +70,6 @@ public class Robot extends IterativeRobot {
 	 */
 	public void teleopInit() {
 		SmartDashboard.putBoolean("Arcade Drive", true);
-		
 	}
 
 	/**
@@ -84,12 +84,24 @@ public class Robot extends IterativeRobot {
 		rightMotorTwo.UpdateMotor();
 		rightMotorThree.UpdateMotor();
 		
+		float horJoystick = 0;
+		float verJoystick = 0;
+		
 		if (SmartDashboard.getBoolean("Arcade Drive"))	
 		{		
 			// Arcade drive
 			
-			float horJoystick = (float) driveControllerL.getRawAxis(0);
-			float verJoystick = (float) driveControllerR.getRawAxis(1);
+			
+			if (usingXbox)
+			{
+				horJoystick = (float) xboxController.getRawAxis(0);
+				verJoystick = (float) xboxController.getRawAxis(5);
+			}
+			else
+			{
+				horJoystick = (float) driveControllerL.getRawAxis(0);
+				verJoystick = (float) driveControllerR.getRawAxis(1);
+			}
 	
 			//leftTalon.target = -verJoystick + horJoystick;
 			//rightTalon.target = verJoystick + horJoystick;
@@ -105,20 +117,53 @@ public class Robot extends IterativeRobot {
 		else
 		{
 			// Tank drive
+			if (usingXbox)
+			{
+				horJoystick = (float) xboxController.getRawAxis(1);
+				verJoystick = (float) xboxController.getRawAxis(5);
+			}
+			else
+			{	
+				horJoystick = (float) driveControllerL.getRawAxis(0);
+				verJoystick = (float) driveControllerR.getRawAxis(1);
+			}	
+			leftMotorOne.target = -horJoystick;
+			leftMotorTwo.target = -horJoystick;
+			leftMotorThree.target = horJoystick;
 			
-			float leftJoystick = (float) driveControllerL.getRawAxis(1);
-			float rightJoystick = (float) driveControllerR.getRawAxis(1);
-				
-			leftMotorOne.target = leftJoystick;
-			leftMotorTwo.target = leftJoystick;
-			leftMotorThree.target = -leftJoystick;
-			
-			rightMotorOne.target = -rightJoystick;
-			rightMotorTwo.target = -rightJoystick;
-			rightMotorThree.target = rightJoystick;
+			rightMotorOne.target = verJoystick;
+			rightMotorTwo.target = verJoystick;
+			rightMotorThree.target = -verJoystick;
 		}
 		
-		if (driveControllerR.getRawButton(4))
+		
+		boolean shiftUp = false;
+		boolean shiftDown = false;
+		
+		if (usingXbox)
+		{
+			if (xboxController.getRawButton(6))
+			{
+				shiftUp = true;
+			}
+			else if (xboxController.getRawButton(5))
+			{
+				shiftDown = true;
+			}
+		}
+		else
+		{
+			if (driveControllerR.getRawButton(4))
+			{
+				shiftUp = true;
+			}
+			if (driveControllerR.getRawButton(5))
+			{
+				shiftDown = true;
+			}
+		}
+		
+		if (shiftUp)
 		{		
 			leftShifter.set(DoubleSolenoid.Value.kForward);
 			rightShifter.set(DoubleSolenoid.Value.kForward);
@@ -128,7 +173,7 @@ public class Robot extends IterativeRobot {
 			//do nothing
 		}
 
-		if (driveControllerR.getRawButton(5))
+		if (shiftDown)
 		{
 			leftShifter.set(DoubleSolenoid.Value.kReverse);
 			rightShifter.set(DoubleSolenoid.Value.kReverse);
