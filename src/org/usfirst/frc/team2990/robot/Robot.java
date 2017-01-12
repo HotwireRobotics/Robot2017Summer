@@ -3,10 +3,16 @@ import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.IterativeRobot;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.PIDController;
+
+import com.kauailabs.navx.frc.AHRS;
 
 public class Robot extends IterativeRobot {
 	
 	public Joystick driveController;
+	
+	public AHRS navxDevice;
 	
 	// MotorThree is the top motor, it must move opposite the others
 	public JoshMotorControllor leftMotorOne;
@@ -25,6 +31,8 @@ public class Robot extends IterativeRobot {
 	
 	public DoubleSolenoid leftShifter;
 	public DoubleSolenoid rightShifter;
+	
+	public Timer placeGear;
 	
 	/**
 	 * This function is run when the robot is first started up and should be
@@ -55,13 +63,50 @@ public class Robot extends IterativeRobot {
 	 */
 	public void autonomousInit() {
 
+		placeGear = new Timer();
+		
+		placeGear.start();
+		
 	}
 
 	/**
 	 * This function is called periodically during autonomous
 	 */
-	public void autonomousPeriodic() {
-
+	public void autonomousPeriodic() 
+	{
+		
+		leftMotorOne.target = 0.0f;
+		leftMotorTwo.target = 0.0f;
+		leftMotorThree.target = 0.0f;
+	
+		rightMotorOne.target = 0.0f;
+		rightMotorTwo.target = 0.0f;
+		rightMotorThree.target = 0.0f;
+		
+		if ((placeGear.get() <= 1.25)) {
+			
+			float speedL = 0.465f;
+			float speedR = 0.425f;
+			
+			leftMotorOne.target = -speedL;
+			leftMotorTwo.target = -speedL;
+			leftMotorThree.target = speedL;
+		
+			rightMotorOne.target = speedR;
+			rightMotorTwo.target = speedR;
+			rightMotorThree.target = -speedR;
+		}
+		
+		leftMotorOne.UpdateMotor();		
+		leftMotorTwo.UpdateMotor();		
+		leftMotorThree.UpdateMotor();
+		
+		rightMotorOne.UpdateMotor();		
+		rightMotorTwo.UpdateMotor();		
+		rightMotorThree.UpdateMotor();
+		
+		
+		
 	}
 
 	/**
