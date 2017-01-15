@@ -4,21 +4,26 @@ import edu.wpi.first.wpilibj.IterativeRobot;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.livewindow.LiveWindow;
 import edu.wpi.first.wpilibj.PIDController;
+import edu.wpi.first.wpilibj.PIDOutput;
+import edu.wpi.first.wpilibj.SPI;
+import edu.wpi.first.wpilibj.Encoder;
 
 import com.kauailabs.navx.frc.AHRS;
+
 
 public class Robot extends IterativeRobot {
 	
 	public Joystick driveController;
 	
-	public AHRS navxDevice;
-	
+	public AHRS navxDevice;	
+
 	// MotorThree is the top motor, it must move opposite the others
 	public JoshMotorControllor leftMotorOne;
 	public JoshMotorControllor leftMotorTwo;
 	public JoshMotorControllor leftMotorThree;
-	
+	public JoshMotorControllor drum;
 	public JoshMotorControllor rightMotorOne;
 	public JoshMotorControllor rightMotorTwo;
 	public JoshMotorControllor rightMotorThree;
@@ -27,26 +32,40 @@ public class Robot extends IterativeRobot {
 	public Joystick driveControllerR;	
 	
 	public Joystick xboxController;
-	public boolean usingXbox = false;
+	public boolean usingXbox = true;
 	
 	public DoubleSolenoid leftShifter;
 	public DoubleSolenoid rightShifter;
 	
 	public Timer placeGear;
 	
+	// navx  zeroing correctly
+	public boolean navxReady;
+	public int loopCount;
+	
+	public Encoder Lencoder;
+	public Encoder Rencoder;
+	public Timer waitGear;
+	public enum AutoStraightState
+	{
+		WaitingForNavx, PlaceGear, WaitGear, ReverseGear, Rotate, CrossLine
+	}
+	public AutoStraightState autoStraightState;
+	
+	
 	/**
 	 * This function is run when the robot is first started up and should be
 	 * used for any initialization code.
 	 */
 	public void robotInit() {
-		driveController = new Joystick(1);
-		//leftTalon = new JoshMotorControllor(1, 0.2f);
-		//rightTalon = new JoshMotorControllor(0, 0.2f);
-		driveControllerL = new Joystick(0);
-		driveControllerR = new Joystick(1);
+		//driveControllerR = new Joystick(1);
+		//driveControllerL = new Joystick(0);
 		leftShifter = new DoubleSolenoid(0, 1);
 		rightShifter = new DoubleSolenoid(2, 3);
 		xboxController = new Joystick(0);
+		waitGear = new Timer();
+		Lencoder = new Encoder(0,1);
+		Rencoder = new Encoder(2,3);
 		
 		float lerpSpeed = 0.2f;
 		leftMotorOne = new JoshMotorControllor(1, lerpSpeed);
@@ -56,57 +75,105 @@ public class Robot extends IterativeRobot {
 		rightMotorOne = new JoshMotorControllor(8, lerpSpeed);
 		rightMotorTwo = new JoshMotorControllor(7, lerpSpeed);
 		rightMotorThree = new JoshMotorControllor(6, lerpSpeed);
+		
+		drum = new JoshMotorControllor(0, 0.2f);
+		//drum.target = 0;
 	}
 
 	/**
 	 * This function is run once each time the robot enters autonomous mode
 	 */
 	public void autonomousInit() {
-
+		navxDevice = new AHRS(SPI.Port.kMXP);
+		navxDevice.reset();
+		navxDevice.zeroYaw();
+		
+		Rencoder.reset();
+		Lencoder.reset();
+		
+		
+		
+		ShiftUp();
+		
+		navxReady = false;
+		loopCount = 0;
+		
+		autoStraightState = AutoStraightState.WaitingForNavx;
 		placeGear = new Timer();
 		
-		placeGear.start();
 		
+		placeGear.start();
 	}
+	
 
 	/**
 	 * This function is called periodically during autonomous
 	 */
-	public void autonomousPeriodic() 
-	{
+	public void autonomousPeriodic() {
+		//System.out.println(Rencoder.get());
 		
-		leftMotorOne.target = 0.0f;
-		leftMotorTwo.target = 0.0f;
-		leftMotorThree.target = 0.0f;
-	
-		rightMotorOne.target = 0.0f;
-		rightMotorTwo.target = 0.0f;
-		rightMotorThree.target = 0.0f;
+		SetLeftMotors(0.0f);
+		SetRightMotors(0.0f);
 		
-		if ((placeGear.get() <= 1.25)) {
+		System.out.println(autoStraightState);
+		
+		if (autoStraightState == AutoStraightState.WaitingForNavx) {
+			// do nothing wait for navx
+			loopCount++;
+			if  (loopCount > 7)
+			{
+				autoStraightState = AutoStraightState.PlaceGear;
+			}
 			
-			float speedL = 0.465f;
-			float speedR = 0.425f;
+			navxDevice.zeroYaw();
+			navxDevice.reset();
+		} else if (autoStraightState == AutoStraightState.PlaceGear) {
 			
-			leftMotorOne.target = -speedL;
-			leftMotorTwo.target = -speedL;
-			leftMotorThree.target = speedL;
-		
-			rightMotorOne.target = speedR;
-			rightMotorTwo.target = speedR;
-			rightMotorThree.target = -speedR;
+			float encodersValue = Rencoder.get();
+			System.out.println(encodersValue);
+			
+			
+			float encoderTarget = 12900;
+			if (encodersValue >= -encoderTarget && encodersValue <= encoderTarget) {
+			
+				float robotYaw = navxDevice.getYaw() / 10;
+				
+				float speed = 0.4f;
+				float speedL = speed + (robotYaw / 2.0f);
+				float speedR = speed - (robotYaw / 2.0f);
+			
+				SetLeftMotors(-speedL);
+				SetRightMotors(speedR);
+			}	
+			else 
+			{
+				autoStraightState = AutoStraightState.WaitGear;
+				waitGear.start();
+			}
+		} else if (autoStraightState == AutoStraightState.WaitGear){
+			if(waitGear.get() > 1f)
+			{
+				autoStraightState = AutoStraightState.ReverseGear;
+			}
+		} else if(autoStraightState == AutoStraightState.ReverseGear) {
+			float robotYaw = navxDevice.getYaw() / 10;
+			
+			float encodersValue = Rencoder.get();
+			System.out.println(encodersValue);
+			
+			float encoderTarget = -6450;
+			if (encodersValue <= encoderTarget) {
+				System.out.println("Backing up");
+				float speed = -0.4f;
+				float speedL = speed + (robotYaw / 2.0f);
+				float speedR = speed - (robotYaw / 2.0f);
+				
+				SetLeftMotors(-speedL);
+				SetRightMotors(speedR);
+			}
 		}
 		
-		leftMotorOne.UpdateMotor();		
-		leftMotorTwo.UpdateMotor();		
-		leftMotorThree.UpdateMotor();
-		
-		rightMotorOne.UpdateMotor();		
-		rightMotorTwo.UpdateMotor();		
-		rightMotorThree.UpdateMotor();
-		
-		
-		
+		UpdateMotors();
 	}
 
 	/**
@@ -121,43 +188,37 @@ public class Robot extends IterativeRobot {
 	 * This function is called periodically during operator control
 	 */
 	public void teleopPeriodic() {
-		
-		leftMotorOne.UpdateMotor();
-		leftMotorTwo.UpdateMotor();
-		leftMotorThree.UpdateMotor();
-		rightMotorOne.UpdateMotor();
-		rightMotorTwo.UpdateMotor();
-		rightMotorThree.UpdateMotor();
-		
+	
+		UpdateMotors();
+		drum.UpdateMotor();
 		float horJoystick = 0;
 		float verJoystick = 0;
 		
 		if (SmartDashboard.getBoolean("Arcade Drive"))	
 		{		
 			// Arcade drive
-			
-			
 			if (usingXbox)
 			{
 				horJoystick = (float) xboxController.getRawAxis(0);
 				verJoystick = (float) xboxController.getRawAxis(5);
+				
+				
+				drum.target = (0);
+				if (xboxController.getRawAxis(3) > 0.5) {
+					drum.target = (float) xboxController.getRawAxis(3);
+				}
+				else if (xboxController.getRawAxis(2) > 0.5) {
+					drum.target = (float) -xboxController.getRawAxis(2);
+				}
 			}
 			else
 			{
 				horJoystick = (float) driveControllerL.getRawAxis(0);
 				verJoystick = (float) driveControllerR.getRawAxis(1);
 			}
-	
-			//leftTalon.target = -verJoystick + horJoystick;
-			//rightTalon.target = verJoystick + horJoystick;
 			
-			leftMotorOne.target = -verJoystick + horJoystick;
-			leftMotorTwo.target = -verJoystick + horJoystick;
-			leftMotorThree.target = -(-verJoystick + horJoystick);
-			
-			rightMotorOne.target = verJoystick + horJoystick;
-			rightMotorTwo.target = verJoystick + horJoystick;
-			rightMotorThree.target = -(verJoystick + horJoystick);
+			SetLeftMotors(-verJoystick + horJoystick);
+			SetRightMotors(verJoystick + horJoystick);
 		}
 		else
 		{
@@ -172,13 +233,9 @@ public class Robot extends IterativeRobot {
 				horJoystick = (float) driveControllerL.getRawAxis(0);
 				verJoystick = (float) driveControllerR.getRawAxis(1);
 			}	
-			leftMotorOne.target = -horJoystick;
-			leftMotorTwo.target = -horJoystick;
-			leftMotorThree.target = horJoystick;
 			
-			rightMotorOne.target = verJoystick;
-			rightMotorTwo.target = verJoystick;
-			rightMotorThree.target = -verJoystick;
+			SetLeftMotors(-horJoystick);
+			SetRightMotors(verJoystick);
 		}
 		
 		
@@ -210,29 +267,56 @@ public class Robot extends IterativeRobot {
 		
 		if (shiftUp)
 		{		
-			leftShifter.set(DoubleSolenoid.Value.kForward);
-			rightShifter.set(DoubleSolenoid.Value.kForward);
-		}
-		else
-		{
-			//do nothing
+			ShiftUp();
 		}
 
 		if (shiftDown)
 		{
-			leftShifter.set(DoubleSolenoid.Value.kReverse);
-			rightShifter.set(DoubleSolenoid.Value.kReverse);
-		}
-		else
-		{
-			//do nothing
+			ShiftDown();
 		}
 	}
+	
+	public void ShiftDown()
+	{
+		leftShifter.set(DoubleSolenoid.Value.kForward);
+		rightShifter.set(DoubleSolenoid.Value.kForward);
+	}
+	
+	public void ShiftUp()
+	{
+		leftShifter.set(DoubleSolenoid.Value.kReverse);
+		rightShifter.set(DoubleSolenoid.Value.kReverse);	
+	}
+	
+	public void SetRightMotors(float speed)
+	{
+		rightMotorOne.target = speed;
+		rightMotorTwo.target = speed;
+		rightMotorThree.target = -speed;
+	}
+	
+	public void SetLeftMotors(float speed)
+	{
+		leftMotorOne.target = speed;
+		leftMotorTwo.target = speed;
+		leftMotorThree.target = -speed;
+	}
+	
+	public void UpdateMotors()
+	{
+		leftMotorOne.UpdateMotor();		
+		leftMotorTwo.UpdateMotor();		
+		leftMotorThree.UpdateMotor();
+	
+		rightMotorOne.UpdateMotor();		
+		rightMotorTwo.UpdateMotor();		
+		rightMotorThree.UpdateMotor();
+	}
+	
 	/**
 	 * This function is called periodically during test mode
 	 */
 	public void testPeriodic() {
 		// LiveWindow.run();
 	}
-
 }
