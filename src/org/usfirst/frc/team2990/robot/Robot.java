@@ -17,9 +17,12 @@ import com.ctre.CANTalon;
 import com.kauailabs.navx.frc.AHRS;
 import edu.wpi.cscore.UsbCamera;
 import edu.wpi.first.wpilibj.CameraServer;
+import edu.wpi.first.wpilibj.Compressor;
 
 
 public class Robot extends IterativeRobot implements PIDOutput {
+	public Compressor compressor;
+
 	//Sensors
 	public AnalogInput ultrasonic;
 	public AHRS navxDevice;
@@ -30,22 +33,18 @@ public class Robot extends IterativeRobot implements PIDOutput {
 
 	//MOTORS:
 	// MotorThree is the top motor, it must move opposite the others
-	public boolean usingXbox;
 	public JoshMotorControllor leftMotorTop;
 	public JoshMotorControllor leftMotorBottom;
 	public JoshMotorControllor rightMotorTop;
 	public JoshMotorControllor rightMotorBottom;
-	public Talon shooterFeeder;
-
-	//Climber motor
-	public JoshMotorControllor drum;
+	public Talon agitator;
+	public JoshMotorControllor climber;
 
 	//Cameras
 	CameraServer camera;
 	public Servo cameraServo;
 
 	//Controllers
-	public Joystick driveController;
 	public Joystick driveControllerL;
 	public Joystick driveControllerR;
 	public Joystick xboxController;
@@ -56,44 +55,36 @@ public class Robot extends IterativeRobot implements PIDOutput {
 	public DoubleSolenoid gearShifter;
 	public boolean gearShifterReleased;
 
-	//navx zeroing correctly
-	public boolean navxReady;
-	public int loopCount;
-
 	//Encoders
 	public Encoder Lencoder;
 	public Encoder Rencoder;
 
 	//Timers
 	public Timer autoPause;
-	public Timer waitGear;
-	public Timer waitRotate;
-	public Timer gearBrake;
-	public Timer finalBrake;
-	public Timer rightBrake;
-	public Timer leftBrake;
 	public double pauseTime = 0.1;
 
 	// Shooter Stuff
 	public RPMControl feederRPMControl;
 	public RPMControl shooterRPMControl;
+	public CANTalon injector;
 
 	//Auto enums
-	public enum AutoStraightState // Run over harambe's face
-	{
-		WaitingForNavX, PlaceGear, WaitGear, ReverseGear, WaitRotate, Rotate, CrossLine, End
+	// Run over harambe's face
+	public enum AutoStraightState {
+		WaitingForNavX, PlaceGear, End
 	}
 
-	public enum AutoRightState // Doing it right
-	{
+	// Doing it right 
+	public enum AutoRightState {
 		WaitingForNavX, Forward, Rotate, Approach, End
 	}
-	public enum AutoLeftState //Left in the dust
-	{
+
+	//Left in the dust 
+	public enum AutoLeftState {
 		WaitingForNavX, Forward, Rotate, Approach, End
 	}
-	public enum AutoShootingState
-	{
+
+	public enum AutoShootingState {
 		Pause, Shoot 
 	} 
 	public AutoStraightState autoStraightState;
@@ -106,14 +97,16 @@ public class Robot extends IterativeRobot implements PIDOutput {
 	public enum AutonomousUsingState {
 		Straight, Right, Left, Shooting, None
 	}
-	public AutonomousUsingState autonomousUsingState = AutonomousUsingState.None;
-	
+
 	public enum AutoSideChoice {
 		Red, Blue
 	}
+
 	public enum AutoPegChoice {
-		Left, Right, Middle, None
+		Left, Right, Middle, Shoot
 	}
+
+	public AutonomousUsingState autonomousUsingState = AutonomousUsingState.None;
 
 	public SendableChooser autoSideSelection;
 	public AutoSideChoice sideChoice;
@@ -136,6 +129,8 @@ public class Robot extends IterativeRobot implements PIDOutput {
 			turnController.setContinuous(true);
 		}
 
+		compressor = new Compressor();
+
 		// Camera
 		{
 			camera = CameraServer.getInstance();
@@ -146,25 +141,15 @@ public class Robot extends IterativeRobot implements PIDOutput {
 
 		ultrasonic = new AnalogInput(0);
 
-		if (usingXbox) {
-			xboxController = new Joystick(0);
-		} else {
-			driveControllerR = new Joystick(1);
-			driveControllerL = new Joystick(0);	
-		}
+		xboxController = new Joystick(3);
+		driveControllerR = new Joystick(1);
+		driveControllerL = new Joystick(0);	
 
 		//Shifters
 		{
 			leftShifter = new DoubleSolenoid(0, 1);
 			rightShifter = new DoubleSolenoid(2, 3);
 			gearShifter = new DoubleSolenoid(4, 5);
-		}
-
-		//Timers
-		{
-			waitGear = new Timer();
-			waitRotate = new Timer();
-			finalBrake = new Timer();
 		}
 
 		//Encoders
@@ -180,8 +165,8 @@ public class Robot extends IterativeRobot implements PIDOutput {
 			leftMotorBottom = new JoshMotorControllor(9, lerpSpeed, true);
 			rightMotorTop = new JoshMotorControllor(6, lerpSpeed, false);
 			rightMotorBottom = new JoshMotorControllor(7, lerpSpeed,true);
-			drum = new JoshMotorControllor(5, 0.2f, false);
-			shooterFeeder = new Talon(3);
+			climber = new JoshMotorControllor(5, lerpSpeed, false);
+			agitator = new Talon(3);
 		}
 
 		//Shooter
@@ -190,29 +175,36 @@ public class Robot extends IterativeRobot implements PIDOutput {
 			float i = .00000003f;
 			float d = 6.06275f;
 			float f = 0.35f;
-			feederRPMControl = new RPMControl("RPM Feeder", 5, true, p, i, d, f, 4500);
-			shooterRPMControl = new RPMControl("RPM Shooter", 2, true, p, i, d, f, 4500); 
+			feederRPMControl = new RPMControl("Two (feeder)", 5, true, p, i, d, f, 4000);
+			shooterRPMControl = new RPMControl("One (shooter)", 2, true, p, i, d, f, 4300); 
+			injector = new CANTalon(9);
+
+			agitator.set(0.4f);
+			injector.set(-0.3f);
 		}
-		
+
+		SmartDashboard.putNumber("Pause Timer", pauseTime);
+
 		// These are from the perspective of the driver!
 		autoSideSelection = new SendableChooser();
 		autoSideSelection.addDefault("Red", AutoSideChoice.Red);
 		autoSideSelection.addObject("Blue", AutoSideChoice.Blue);
 		SmartDashboard.putData("Autonomous Side Selection", autoSideSelection);
-		
+
 		autoPegSelection = new SendableChooser();
 		autoPegSelection.addDefault("Left", AutoPegChoice.Left);
 		autoPegSelection.addObject("Middle", AutoPegChoice.Middle);
 		autoPegSelection.addObject("Right", AutoPegChoice.Right);
+		autoPegSelection.addObject("Shoot", AutoPegChoice.Shoot);
 		SmartDashboard.putData("Autonomous Peg Selection", autoPegSelection);
 	}
-	
+
 	public void autonomousInit() {
 		LogInfo("AUTO INIT");
 		navxDevice.zeroYaw();
 
 		blue = +1;
-		
+
 		//ultrasonic.setAutomaticMode(true);
 		Rencoder.reset();
 		Lencoder.reset();
@@ -220,28 +212,25 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		ShiftUp();
 		gearShifter.set(DoubleSolenoid.Value.kForward);
 
-		navxReady = false;
-		loopCount = 0;
-
 		autoStraightState = AutoStraightState.WaitingForNavX;
 		autoRightState = AutoRightState.WaitingForNavX;
 		autoLeftState = AutoLeftState.WaitingForNavX;
 		autoShootingState = AutoShootingState.Pause;
-		
+
 		autoPause = new Timer();
-		waitRotate = new Timer();
-		gearBrake = new Timer();
-		finalBrake = new Timer();
-		rightBrake = new Timer();
-		leftBrake = new Timer();
 		LogInfo("Auto start");
+
+		pauseTime = SmartDashboard.getNumber("Pause Time");
+		if (pauseTime <= 0) {
+			pauseTime = 0.1;
+		}
 
 		sideChoice = (AutoSideChoice)autoSideSelection.getSelected();
 		pegChoice = (AutoPegChoice)autoPegSelection.getSelected();
 		LogInfo("SIDE" + sideChoice.toString());
 		LogInfo("PEG" + pegChoice.toString());
-		
-		if (pegChoice == AutoPegChoice.None){
+
+		if (pegChoice == AutoPegChoice.Shoot){
 			autonomousUsingState = AutonomousUsingState.Shooting;
 		}else if (pegChoice == AutoPegChoice.Middle) {
 			autonomousUsingState = AutonomousUsingState.Straight;
@@ -262,16 +251,16 @@ public class Robot extends IterativeRobot implements PIDOutput {
 				autonomousUsingState = AutonomousUsingState.Right;
 			}
 		}
-		
+
 		LogInfo("AUTO STATE: " + autonomousUsingState + blue);
-		
+
 		autoPause.start();
-		
+
 	}
 
 	public void autonomousPeriodic() {
 		LogInfo("TOP OF AUTONOMOUS");
-		
+
 		//System.out.println(Rencoder.get());
 		SetLeftMotors(0.0f);
 		SetRightMotors(0.0f);
@@ -279,14 +268,14 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		if (autonomousUsingState == AutonomousUsingState.Straight)
 		{
 			LogInfo("Straight State - " + autoStraightState);
-			
+
 			if (autoStraightState == AutoStraightState.WaitingForNavX) {
 				if (autoPause.get() >= pauseTime) {
 					autoStraightState = AutoStraightState.PlaceGear;
 				} else {
 					navxDevice.zeroYaw();
 				}
-				
+
 			} else if (autoStraightState == AutoStraightState.PlaceGear) {
 
 				float encodersValue = Rencoder.get();				
@@ -295,70 +284,7 @@ public class Robot extends IterativeRobot implements PIDOutput {
 				if (ultrasonic.getValue() >= 83) {
 					DriveStraight(0.3f);
 				} else { 
-					autoStraightState = AutoStraightState.WaitGear;
-
-					SetLeftMotors(0);
-					SetRightMotors(0);
-
-					ClearRotation();
-					waitGear.start();
-				}
-			} else if (autoStraightState == AutoStraightState.WaitGear) {
-				if(waitGear.get() > 1.5f) {
-					autoStraightState = AutoStraightState.ReverseGear;
-					ClearRotation();
-				}
-			} else if(autoStraightState == AutoStraightState.ReverseGear) {
-				float encodersValue = Rencoder.get();
-				LogInfo("Encoder " + encodersValue);
-
-				float encoderTarget = 6500;
-				if (encodersValue >= encoderTarget) {
-					float speed = 0.4f;
-					float speedL = -speed;
-					float speedR = speed;
-					SetLeftMotors(speedL);
-					SetRightMotors(speedR);
-				} else {
-					autoStraightState = AutoStraightState.WaitRotate;
-					waitRotate.start();
-					ClearRotation();
-				}
-			} else if(autoStraightState == AutoStraightState.WaitRotate) {
-				if(waitRotate.get() > 1f) {
-					autoStraightState = AutoStraightState.Rotate;
-					ClearRotation();
-				}
-			} else if(autoStraightState == AutoStraightState.Rotate) {
-				float target = 35;
-				float robotYaw1 = navxDevice.getYaw();
-				LogInfo("Yaw " + robotYaw1);
-				if(robotYaw1 < target) {
-					float speed = 0.6f;
-					float speedL = speed;
-					float speedR = speed;
-
-					SetLeftMotors(speedL);
-					SetRightMotors(speedR);
-				} else {
-					autoStraightState = AutoStraightState.CrossLine;
-					Rencoder.reset();
-					ClearRotation();
-				}
-			} else if(autoStraightState == AutoStraightState.CrossLine) {
-				float encoderTarget = 24000;
-
-				float encodersValue = Rencoder.get();
-				LogInfo("Encoders " + encodersValue);
-				if (encodersValue < encoderTarget) {
-					float speed = 0.4f;
-					float speedL = speed;
-					float speedR = -speed;
-					SetLeftMotors(speedL);
-					SetRightMotors(speedR);
-				} else { 
 					autoStraightState = AutoStraightState.End;
-					finalBrake.start();
 				}
 			} else if(autoStraightState == AutoStraightState.End) {
 				ClearRotation();
@@ -374,7 +300,7 @@ public class Robot extends IterativeRobot implements PIDOutput {
 				} else {
 					navxDevice.zeroYaw();
 				}
-				
+
 			} else if(autoRightState == AutoRightState.Forward){
 				float encodersValue = Rencoder.get();
 				System.out.println("Encoders " + encodersValue);
@@ -412,7 +338,6 @@ public class Robot extends IterativeRobot implements PIDOutput {
 					SetRightMotors(speedR);
 				} else {
 					autoRightState = AutoRightState.End;
-					rightBrake.start();
 					ClearRotation();
 				}				
 			} else if(autoRightState == AutoRightState.End){
@@ -429,7 +354,7 @@ public class Robot extends IterativeRobot implements PIDOutput {
 				} else {
 					navxDevice.zeroYaw();
 				}
-				
+
 			} else if(autoLeftState == AutoLeftState.Forward){
 				float encodersValue = Rencoder.get();
 				LogInfo("Encoder " + encodersValue + ";");
@@ -467,15 +392,13 @@ public class Robot extends IterativeRobot implements PIDOutput {
 					DriveStraight(0.4f);
 				}else{
 					autoLeftState = AutoLeftState.End;
-					leftBrake.start();
 				}
 			} else if(autoLeftState == AutoLeftState.End){
 				ClearRotation();
 			}
-		}else if(autonomousUsingState == AutonomousUsingState.Shooting)
-		{
+		} else if(autonomousUsingState == AutonomousUsingState.Shooting) {
 			autoShootingState = AutoShootingState.Pause;
-			
+
 			if(autoShootingState == AutoShootingState.Pause){
 				if (autoPause.get() >= pauseTime) {
 					autoShootingState = AutoShootingState.Shoot;
@@ -490,117 +413,67 @@ public class Robot extends IterativeRobot implements PIDOutput {
 
 	public void teleopInit() {
 		SmartDashboard.putBoolean("Arcade Drive", true);
-		SmartDashboard.putNumber("Shooter Feeder Speed", 0.3f);
+		SmartDashboard.putNumber("Four (Agitator)", agitator.get());
 		SmartDashboard.putBoolean("Xbox", false);
+		SmartDashboard.putNumber("Three (Injector)", agitator.get());
 	}
 
 	public void teleopPeriodic() {
-		LogInfo("TOP OF TELEOP");
-		
-		UpdateMotors();
-
-		//feederRPMControl.UpdateRPMControl();
-		//shooterRPMControl.UpdateRPMControl();
-		
-		//shooterFeeder.set(SmartDashboard.getNumber("Shooter Feeder Speed"));
-		
-		//drum.UpdateMotor();
-
-		float horJoystick = 0;
-		float verJoystick = 0;
-
-		if (SmartDashboard.getBoolean("Xbox")) {
-			usingXbox = true;
-		}else if (!SmartDashboard.getBoolean("Xbox"))
+		//Printing
 		{
-			usingXbox = !true;
+			LogInfo("TOP OF TELEOP");
+			LogInfo("COMPRESSOR ENABLED: " + compressor.enabled());
 		}
 		
-		if (SmartDashboard.getBoolean("Arcade Drive")) {
-			// Arcade drive
-			if (usingXbox) {
-				horJoystick = TranslateController((float) xboxController.getRawAxis(0));
-				verJoystick = TranslateController((float) xboxController.getRawAxis(5));
-
-				drum.target = (0);
-				if (xboxController.getRawAxis(3) > 0.5) {
-					drum.target = (float) xboxController.getRawAxis(3);
-				} else if (xboxController.getRawAxis(2) > 0.5) {
-					drum.target = (float) -xboxController.getRawAxis(2);
-				}
-			} else {
-				if (driveControllerL.getRawButton(3)) {
-					drum.target = 1;
-				} else if (driveControllerL.getRawButton(2)) {
-					drum.target = -1;
-				} else {
-					drum.target = 0;
-				}
-
-				if(driveControllerR.getRawButton(3)) {
-					cameraServo.set(1);
-				} else if(driveControllerR.getRawButton(2)) {
-					cameraServo.set(0);
-				}
-
-				float epsilon = 0.2f;
-				float leftInput = TranslateController((float)driveControllerL.getRawAxis(0));
-				if (leftInput > epsilon || leftInput < -epsilon) {
-					horJoystick = leftInput;
-				}
-				float rightInput = TranslateController((float)driveControllerR.getRawAxis(1));
-				if (rightInput > epsilon || rightInput < -epsilon) {
-					verJoystick = rightInput;
-				}
+		//Update Motors
+		{
+			UpdateMotors();
+			feederRPMControl.UpdateRPMControl();
+			shooterRPMControl.UpdateRPMControl();
+			climber.UpdateMotor();
+		}
+		
+		//Logictechs
+		//Driving
+		{
+			float horJoystick = 0;
+			float verJoystick = 0;
+			
+			float epsilon = 0.2f;
+			float leftInput = TranslateController((float)driveControllerL.getRawAxis(0));
+			if (leftInput > epsilon || leftInput < -epsilon) {
+				horJoystick = leftInput;
+			}
+			float rightInput = TranslateController((float)driveControllerR.getRawAxis(1));
+			if (rightInput > epsilon || rightInput < -epsilon) {
+				verJoystick = rightInput;
 			}
 
 			SetLeftMotors(verJoystick + horJoystick);
 			SetRightMotors(-verJoystick + horJoystick);
-		} else {
-			// Tank drive
-			if (usingXbox) {
-				horJoystick = (float) xboxController.getRawAxis(1);
-				verJoystick = (float) xboxController.getRawAxis(5);
-			} else {
-				horJoystick = (float) driveControllerL.getRawAxis(0);
-				verJoystick = (float) driveControllerR.getRawAxis(1);
-			}
-
-			SetLeftMotors(-horJoystick);
-			SetRightMotors(verJoystick);
 		}
-
-		boolean shiftUp = false;
-		boolean shiftDown = false;
-
-		if (usingXbox) {
-			if (xboxController.getRawButton(6)) {
-				shiftUp = true;
-			} else if (xboxController.getRawButton(5)) {
-				shiftDown = true;
+		//Servo buttons
+		{
+			if(driveControllerR.getRawButton(3)) {
+				cameraServo.set(1);
+			} else if(driveControllerR.getRawButton(2)) {
+				cameraServo.set(0);
 			}
-			if(xboxController.getRawButton(10) && gearShifterReleased) {
-				if(gearShifter.get() == DoubleSolenoid.Value.kReverse) {
-					gearShifterReleased = false;
-					gearShifter.set(DoubleSolenoid.Value.kForward);
-				} else {
-					gearShifterReleased =  false;
-					gearShifter.set(DoubleSolenoid.Value.kReverse);
-				}
-			}
-			if (!xboxController.getRawButton(10)) {
-				gearShifterReleased = true;
-			}
-		} else {
+		}
+		//Shifting
+		{
 			if (driveControllerR.getRawButton(4)) {
-				shiftUp = true;
-				LogInfo("Shifting up");
+				ShiftUp();
 			}
 			if (driveControllerR.getRawButton(5)) {
-				shiftDown = true;
-				LogInfo("Shifting down");
+				ShiftDown();
 			}
-			if(driveControllerR.getRawButton(1) && gearShifterReleased) {
+		}
+		
+		//xBox
+		//Gear Gobbler Pnoomatic
+		{
+			if (xboxController.getRawButton(1) && gearShifterReleased) {
 				if(gearShifter.get() == DoubleSolenoid.Value.kReverse) {
 					gearShifterReleased = false;
 					gearShifter.set(DoubleSolenoid.Value.kForward);
@@ -609,22 +482,24 @@ public class Robot extends IterativeRobot implements PIDOutput {
 					gearShifter.set(DoubleSolenoid.Value.kReverse);
 				}
 			}
-			if (!driveControllerR.getRawButton(1)) {
+			if (!xboxController.getRawButton(1)) {
 				gearShifterReleased = true;
 			}
 		}
-		
-		shooterRPMControl.running = true;
-		feederRPMControl.running = true;
-
-		if (shiftUp) {
-			ShiftUp();
+		//Shooting Toggle
+		{
+			if (xboxController.getRawButton(2)) {
+				ShooterToggle(!shooterRPMControl.running);
+			}
 		}
-		if (shiftDown) {
-			ShiftDown();
+		//Climber
+		{
+			climber.target = 0;
+			if (xboxController.getRawButton(4)) {
+				climber.target = 1;
+			}
 		}
 		
-		//drum.target = (float)SmartDashboard.getNumber("Shooter Feeder Speed");
 	}
 
 	// NOTE the yaw must be reset before using this
@@ -639,7 +514,7 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		SetRightMotors(((speed) - (speed * pidError)) * -1); //-0.583
 
 		speed = -speed;
-		
+
 		LogInfo("STRAIGHT YAW " + navxDevice.getYaw());
 	}
 
@@ -650,23 +525,34 @@ public class Robot extends IterativeRobot implements PIDOutput {
 
 	public void ShiftDown() {
 		leftShifter.set(DoubleSolenoid.Value.kForward);
-		rightShifter.set(DoubleSolenoid.Value.kReverse);
+		rightShifter.set(DoubleSolenoid.Value.kForward);
 	}
 
 	public void ShiftUp() {
 		leftShifter.set(DoubleSolenoid.Value.kReverse);
-		rightShifter.set(DoubleSolenoid.Value.kForward);
+		rightShifter.set(DoubleSolenoid.Value.kReverse);
 	}
 
-	public float TranslateController(float input)
-	{
-		float deadzone = 0.10f;
+	public float TranslateController(float input) {
+		float deadzone = 0.15f;
 		if (input > -deadzone && input < deadzone) {
 			input = 0.0f;
 		}
 		float a = 0.7f;
 		float output = (a * input * input * input) + (1 - a) * input; 
 		return output;
+	}
+
+	public void ShooterToggle(boolean toggle) {
+		shooterRPMControl.running = toggle;
+		feederRPMControl.running = toggle;
+		if (toggle) {
+			agitator.set(SmartDashboard.getNumber("Agitator"));
+			injector.set(SmartDashboard.getNumber("Injector"));
+		} else {
+			agitator.set(0.0f);
+			injector.set(0.0f);
+		}
 	}
 
 	public void SetLeftMotors(float speed){
