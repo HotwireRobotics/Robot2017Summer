@@ -135,13 +135,13 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		{
 			camera = CameraServer.getInstance();
 			UsbCamera usbCam = camera.startAutomaticCapture(); 
-			usbCam.setResolution(160,  120);
+			usbCam.setResolution(250,  210);
 			usbCam.setFPS(30);
 		}
 
 		ultrasonic = new AnalogInput(0);
 
-		xboxController = new Joystick(3);
+		xboxController = new Joystick(2);
 		driveControllerR = new Joystick(1);
 		driveControllerL = new Joystick(0);	
 
@@ -179,8 +179,8 @@ public class Robot extends IterativeRobot implements PIDOutput {
 			shooterRPMControl = new RPMControl("One (shooter)", 2, true, p, i, d, f, 4300); 
 			injector = new CANTalon(9);
 
-			agitator.set(0.4f);
-			injector.set(-0.3f);
+			agitator.set(0.0f);
+			injector.set(-0.0f);
 		}
 
 		SmartDashboard.putNumber("Pause Timer", pauseTime);
@@ -413,9 +413,9 @@ public class Robot extends IterativeRobot implements PIDOutput {
 
 	public void teleopInit() {
 		SmartDashboard.putBoolean("Arcade Drive", true);
-		SmartDashboard.putNumber("Four (Agitator)", agitator.get());
+		SmartDashboard.putNumber("Four (Agitator)", 1.0f);
 		SmartDashboard.putBoolean("Xbox", false);
-		SmartDashboard.putNumber("Three (Injector)", agitator.get());
+		SmartDashboard.putNumber("Three (Injector)", -0.4f);
 	}
 
 	public void teleopPeriodic() {
@@ -451,6 +451,26 @@ public class Robot extends IterativeRobot implements PIDOutput {
 
 			SetLeftMotors(verJoystick + horJoystick);
 			SetRightMotors(-verJoystick + horJoystick);
+		}   
+		// Shooting driving aligning
+		{
+			float driveSensitivity = 0.1f;
+			if (driveControllerL.getRawButton(2)) {
+				SetLeftMotors(driveSensitivity);
+				SetRightMotors(-driveSensitivity);
+			} else if (driveControllerL.getRawButton(3)) {
+				SetLeftMotors(-driveSensitivity);
+				SetRightMotors(driveSensitivity);
+			} 
+			
+			float turnSensitivity = 0.4f;
+			if (driveControllerL.getRawButton(4)) {
+				SetLeftMotors(-turnSensitivity);
+				SetRightMotors(-turnSensitivity);
+			} else if (driveControllerL.getRawButton(5)) {
+				SetLeftMotors(turnSensitivity);
+				SetRightMotors(turnSensitivity);
+			}
 		}
 		//Servo buttons
 		{
@@ -489,7 +509,9 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		//Shooting Toggle
 		{
 			if (xboxController.getRawButton(2)) {
-				ShooterToggle(!shooterRPMControl.running);
+				ShooterToggle(true);
+			} else {
+				ShooterToggle(false);
 			}
 		}
 		//Climber
@@ -547,8 +569,8 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		shooterRPMControl.running = toggle;
 		feederRPMControl.running = toggle;
 		if (toggle) {
-			agitator.set(SmartDashboard.getNumber("Agitator"));
-			injector.set(SmartDashboard.getNumber("Injector"));
+			agitator.set(SmartDashboard.getNumber("Four (Agitator)"));
+			injector.set(SmartDashboard.getNumber("Three (Injector)"));
 		} else {
 			agitator.set(0.0f);
 			injector.set(0.0f);
