@@ -23,26 +23,27 @@ public class JoshMotorControllor {
 		
 	public void UpdateMotor()
 	{
-		double curr = 0;
-		if(usingVictor)
-		{
-			curr = victor.get();
-		} else {	
-			curr = talon.get();
-		}
-		
-		float newValue = Lerp((float)curr,target,accelValue);
-		
-		float epsilon = 0.001f;
-		if (newValue < epsilon && newValue > -epsilon) 
-		{
-			newValue = 0;
-		}
-
-		if (usingVictor) {
-			victor.set(newValue);
-		} else {
-			talon.set(newValue);
+		if (victor != null || talon != null) {
+			double curr = 0;
+			if(usingVictor) {
+				curr = victor.get();
+			} else {	
+				curr = talon.get();
+			}
+			
+			float newValue = Lerp((float)curr,target,accelValue);
+			
+			float epsilon = 0.001f;
+			if (newValue < epsilon && newValue > -epsilon) 
+			{
+				newValue = 0.0f;
+			}
+	
+			if (usingVictor) {
+				victor.set(newValue);
+			} else {
+				talon.set(newValue);
+			}
 		}
 	}
 	
