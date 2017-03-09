@@ -71,7 +71,7 @@ public class RPMControl {
 	@SuppressWarnings("deprecation")
 	public void UpdateRPMControl() {
 		
-		targetRPM = (float) SmartDashboard.getNumber(name);
+		//targetRPM = (float) SmartDashboard.getNumber(name);
 		P = (float) SmartDashboard.getNumber(name + "P");
 		I = (float) SmartDashboard.getNumber(name + "I");
 		D = (float) SmartDashboard.getNumber(name + "D");
