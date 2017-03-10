@@ -66,6 +66,7 @@ public class Robot extends IterativeRobot implements PIDOutput {
 	public RPMControl feederRPMControl;
 	public RPMControl shooterRPMControl;
 	public CANTalon injector;
+	public Talon stirer;
 
 	//Auto enums
 	// Middle Peg
@@ -156,6 +157,7 @@ public class Robot extends IterativeRobot implements PIDOutput {
 			rightMotorBottom = new JoshMotorControllor(7, lerpSpeed,true);			
 			climber = new JoshMotorControllor(5, lerpSpeed, false);			
 			agitator = new Talon(3);
+			stirer = new Talon(2);
 		}
 
 		//Shooter
@@ -167,9 +169,10 @@ public class Robot extends IterativeRobot implements PIDOutput {
 			feederRPMControl = new RPMControl("Two (feeder)", 5, true, p, i, d, f, 4000);
 			shooterRPMControl = new RPMControl("One (shooter)", 2, true, p, i, d, f, 4300); 
 			injector = new CANTalon(9);
-
-			agitator.set(0.0f);
+			
 			injector.set(-0.0f);
+			agitator.set(0.0f);
+			stirer.set(0.0f);
 		}
 
 		SmartDashboard.putNumber("Initial Pause", pauseTime);
@@ -534,9 +537,9 @@ public class Robot extends IterativeRobot implements PIDOutput {
 
 		{
 			if(ultrasonic.getValue() <= 92){
-				relay.set(Relay.Value.kForward);
-			}else{
 				relay.set(Relay.Value.kReverse);
+			}else{
+				relay.set(Relay.Value.kForward);
 			}
 		}
 		//Logictechs
@@ -603,7 +606,7 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		//xBox
 		//Gear Gobbler neumatic
 		{
-			if (xboxController.getRawButton(1) && gearShifterReleased) {
+			if ((xboxController.getRawButton(1) && gearShifterReleased) || (driveControllerR.getRawButton(1) && gearShifterReleased)) {
 				if(gearShifter.get() == DoubleSolenoid.Value.kReverse) {
 					gearShifterReleased = false;
 					gearShifter.set(DoubleSolenoid.Value.kForward);
@@ -612,7 +615,7 @@ public class Robot extends IterativeRobot implements PIDOutput {
 					gearShifter.set(DoubleSolenoid.Value.kReverse);
 				}
 			}
-			if (!xboxController.getRawButton(1)) {
+			if (!xboxController.getRawButton(1) && !driveControllerR.getRawButton(1)) {
 				gearShifterReleased = true;
 			}
 		}
@@ -627,7 +630,7 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		//Climber
 		{
 			climber.target = 0.0f;
-			if (xboxController.getRawButton(4)) {
+			if (xboxController.getRawButton(4) || driveControllerL.getRawButton(1)) {
 				System.out.println("SETTING");
 				climber.target = 1;
 			}
@@ -685,11 +688,13 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		if (toggle) {
 			agitator.set(motorFour);
 			injector.set(motorThree);
+			stirer.set(0.75f);
 			//agitator.set(SmartDashboard.getNumber("Four (Agitator)"));
 			//injector.set(SmartDashboard.getNumber("Three (Injector)"));
 		} else {
 			agitator.set(0.0f);
 			injector.set(0.0f);
+			stirer.set(0.0f);
 		}
 	}
 
