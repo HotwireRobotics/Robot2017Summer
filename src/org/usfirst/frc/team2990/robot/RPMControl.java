@@ -98,7 +98,7 @@ public class RPMControl {
 			
 			if (RPM != 0 && debug) {		
 				SmartDashboard.putNumber(name + "RPM", RPM);
-				System.out.println(name + "RPM SPEED " + RPM + ";");
+				//System.out.println(name + "RPM SPEED " + RPM + ";");
 			}
 			
 			encoderTimer.reset();
