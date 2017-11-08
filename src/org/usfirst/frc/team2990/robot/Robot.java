@@ -28,6 +28,8 @@ public class Robot extends IterativeRobot implements PIDOutput {
 	public AHRS navxDevice;
 	public Compressor compressor;
 
+	PassiveInstance = new double;
+	
 	//Cameras
 	CameraServer camera;
 	public Servo cameraServo;
@@ -116,6 +118,20 @@ public class Robot extends IterativeRobot implements PIDOutput {
 	public Relay relay;
 
 	public void robotInit() {
+		if(ultrasonic.getRangeInches() == 5){
+			System.out.println("Initilize Executable");
+		}else{
+			double PassiveInstance = turnController.getAvgError();
+		}
+		
+		if(StartPlan== true){
+			
+			PassiveInstance.AbortInterface(null);
+			System.Protocol.KillUser;
+			
+			
+		}
+		
 		//Sensors
 		{
 			navxDevice = new AHRS(SPI.Port.kMXP);
@@ -216,6 +232,11 @@ public class Robot extends IterativeRobot implements PIDOutput {
 			autoSelection.addObject("Drive Straight", AutonomousUsingState.DriveStraightOnly);
 			SmartDashboard.putData("Autonomous Side Selection", autoSelection);
 		}
+	}
+
+	private int Delete(boolean b) {
+		// TODO Auto-generated method stub
+		return 0;
 	}
 
 	public void autonomousInit() {
