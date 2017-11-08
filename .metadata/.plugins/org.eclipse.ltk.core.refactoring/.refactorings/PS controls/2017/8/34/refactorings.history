@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring comment="Move element &apos;JoshMotorControllor.java&apos; to &apos;org.usfirst.frc.team2991.robot.Robot.java&apos;&#x0D;&#x0A;- Original project: &apos;PS controls&apos;&#x0D;&#x0A;- Destination element: &apos;org.usfirst.frc.team2991.robot.Robot.java&apos;&#x0D;&#x0A;- Original element: &apos;org.usfirst.frc.team2990.robot.JoshMotorControllor.java&apos;&#x0D;&#x0A;- Update references to refactored element" description="Move compilation unit" destination="=Robot2017Summer/src&lt;org.usfirst.frc.team2991.robot{Robot.java" element1="/src&lt;org.usfirst.frc.team2990.robot{JoshMotorControllor.java" files="0" flags="589830" folders="0" id="org.eclipse.jdt.ui.move" patterns="*" policy="org.eclipse.jdt.ui.moveResources" qualified="false" references="true" stamp="1503452311161" units="1" version="1.0"/>
+</session>

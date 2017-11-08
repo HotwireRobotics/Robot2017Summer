@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring comment="Copy element &apos;JoshMotorControllor.java&apos; to &apos;BlankTest/src/org.usfirst.frc.team2991.robot&apos;&#x0D;&#x0A;- Original project: &apos;2990&apos;&#x0D;&#x0A;- Destination element: &apos;BlankTest/src/org.usfirst.frc.team2991.robot&apos;&#x0D;&#x0A;- Original element: &apos;org.usfirst.frc.team2990.robot.JoshMotorControllor.java&apos;" description="Copy compilation unit" destination="=BlankTest/src&lt;org.usfirst.frc.team2991.robot" element1="/src&lt;org.usfirst.frc.team2990.robot{JoshMotorControllor.java" files="0" flags="589830" folders="0" id="org.eclipse.jdt.ui.copy" policy="org.eclipse.jdt.ui.copyResources" stamp="1503269808497" units="1" version="1.0"/>
+</session>
