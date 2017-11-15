@@ -1,8 +1,7 @@
 package org.usfirst.frc.team2991.robot;
 
-import org.spectrum3847.RIOdroid.RIOdroid;
 import org.usfirst.frc.team2991.robot.RIODroid.RIOadb;
-
+import org.usfirst.frc.team2991.robot.RIODroid.RIOdroid;
 import com.kauailabs.navx.frc.AHRS;
 import edu.wpi.first.wpilibj.PIDController;
 import edu.wpi.first.wpilibj.PIDOutput;
@@ -114,8 +113,8 @@ public class Robot extends IterativeRobot implements PIDOutput {
 		//RIODroid
 		{
 			RIOdroid.initUSB();
-			RIOadb.init();
-			System.out.println(RIOdroid.executeCommand("adb devices"));
+			//RIOadb.init();
+			//System.out.println(RIOdroid.executeCommand("adb devices"));
 		}
 	}
 
@@ -328,8 +327,7 @@ public class Robot extends IterativeRobot implements PIDOutput {
 
 	@Override
 	public void pidWrite(double output) {
-		// TODO Auto-generated method stub
-
+		
 	}
 
 }

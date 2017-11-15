@@ -4,4 +4,6 @@
 <fullyQualifiedTypeName name="edu.wpi.first.wpilibj.Joystick"/>
 <fullyQualifiedTypeName name="com.ctre.CANTalon"/>
 <fullyQualifiedTypeName name="edu.wpi.first.wpilibj.Talon"/>
+<fullyQualifiedTypeName name="org.spectrum3847.RIOdroid.RIOdroid"/>
+<fullyQualifiedTypeName name="org.usfirst.frc.team2991.robot.RIODroid.RIOadb"/>
 </qualifiedTypeNameHistroy>
