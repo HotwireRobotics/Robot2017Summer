@@ -2,7 +2,6 @@ INDEX VERSION 1.130+C:\Users\proff\workspace\.metadata\.plugins\org.eclipse.jdt.
 415672350.index
 1963450488.index
 2673275340.index
-4151981257.index
 3897572660.index
 1644463860.index
 64127082.index

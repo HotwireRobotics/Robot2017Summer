@@ -2,6 +2,7 @@ package org.usfirst.frc.team2991.robot;
 
 import org.usfirst.frc.team2991.robot.RIODroid.RIOadb;
 import org.usfirst.frc.team2991.robot.RIODroid.RIOdroid;
+
 import com.kauailabs.navx.frc.AHRS;
 import edu.wpi.first.wpilibj.PIDController;
 import edu.wpi.first.wpilibj.PIDOutput;
@@ -11,16 +12,12 @@ import edu.wpi.first.wpilibj.CameraServer;
 import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.IterativeRobot;
 import edu.wpi.first.wpilibj.Joystick;
-import edu.wpi.first.wpilibj.Talon;
-import edu.wpi.first.wpilibj.TalonSRX;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.Ultrasonic;
-import edu.wpi.first.wpilibj.Victor;
 import edu.wpi.first.wpilibj.VictorSP;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.Encoder;
-import edu.wpi.first.wpilibj.PIDController;
 
 public class Robot extends IterativeRobot implements PIDOutput {
 	public DriveTrain drivetrain;
@@ -102,6 +99,7 @@ public class Robot extends IterativeRobot implements PIDOutput {
 			climber2 = new VictorSP(1);
 		}
 		//Camera
+		if (false)
 		{
 			camera = CameraServer.getInstance();
 			UsbCamera usbCam = camera.startAutomaticCapture();
@@ -112,14 +110,13 @@ public class Robot extends IterativeRobot implements PIDOutput {
 
 		//RIODroid
 		{
-			RIOdroid.initUSB();
+			//RIOdroid.initUSB();
 			//RIOadb.init();
-			//System.out.println(RIOdroid.executeCommand("adb devices"));
 		}
 	}
 
 
-	public void autonomousInit() {
+	public void autonomousInit() {		
 		failSafe.start();
 		navx.zeroYaw();
 		AutoState = 0;
@@ -175,6 +172,8 @@ public class Robot extends IterativeRobot implements PIDOutput {
 	}
 
 	public void teleopInit(){
+		System.out.println("ADB " + RIOdroid.executeCommand("adb devices"));
+		
 		drivetrain.SetCoast();
 	}
 
@@ -228,7 +227,6 @@ public class Robot extends IterativeRobot implements PIDOutput {
 			}
 		}
 
-		drivetrain.Update();
 		//Drive Straight
 		{
 			if(test == true){
@@ -264,6 +262,9 @@ public class Robot extends IterativeRobot implements PIDOutput {
 				}   
 			}
 		}
+		
+		drivetrain.Update();
+		
 		//Navx reset
 		{
 			if(xbox360Controller.getRawButton(2)){
